@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Escape Road</title>
+<link rel="shortcut icon" href="icon.png">
+<link rel="stylesheet" href="TemplateData/style.css">
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init()</script>
+<style>
+  @font-face {
+    font-family: myFirstFont;
+    src: url(Chainwhacks.otf);
+  }
+  #logo-canvas, body { font-family: myFirstFont; }
+</style>
+</head>
+<body class="dark">
+
+<!-- Unity Canvas -->
+<div id="unity-container" class="unity-desktop">
+  <canvas id="unity-canvas"></canvas>
+</div>
+
+<!-- Loading Cover -->
+<div id="loading-cover" style="display:none;background: black;">
+  <div id="unity-loading-bar">
+    <canvas id="logo-canvas" style="position: absolute; background-color: black;">
+      <img src="loading.png" id="ld_bg">
+      <img src="car-icon.png" id="ld_car">
+    </canvas>
+  </div>
+</div>
+
+<img id="azlogo" class="az" src="az_logo.png">
+
+<!-- Save/Load Buttons -->
+<button onclick="saveGame()">Save Game</button>
+<button onclick="loadGame()">Load Game</button>
+
+<script>
+  // =========================
+  // UNITY INSTANCE SETUP
+  // =========================
+  const canvas = document.querySelector("#unity-canvas");
+  const container = document.querySelector("#unity-container");
+  const loadingCover = document.querySelector("#loading-cover");
+
+  const buildUrl = "TemplateData";
+  const loaderUrl = buildUrl + "/loader.js";
+  const config = {
+    dataUrl: buildUrl + "/data.unityweb",
+    frameworkUrl: buildUrl + "/framework.js.unityweb",
+    codeUrl: buildUrl + "/wasm.unityweb",
+    streamingAssetsUrl: "StreamingAssets",
+    companyName: "1games.io",
+    productName: "Escape Road",
+    productVersion: "2.0",
+  };
+
+  function delay(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+  async function loadUnity() {
+    loadingCover.style.display = "";
+    const script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = async () => {
+      await createUnityInstance(canvas, config, (progress) => {
+        // optional loading bar update
+      }).then(unityInstance => {
+        window.unityInstance = unityInstance;
+        loadingCover.style.display = "none";
+      }).catch(alert);
+    };
+    document.body.appendChild(script);
+  }
+
+  loadUnity();
+
+  // =========================
+  // SAVE/LOAD SYSTEM
+  // =========================
+  // Helper to call Unity functions
+  function sendToUnity(objectName, methodName, value) {
+    if (window.unityInstance) {
+      window.unityInstance.SendMessage(objectName, methodName, value);
+    }
+  }
+
+  // Save Game State
+  function saveGame() {
+    if (!window.unityInstance) { alert("Game not loaded yet!"); return; }
+
+    // Ask Unity to give JSON string of game state
+    window.unityInstance.SendMessage("GameManager", "GetSaveData", ""); 
+    // Note: Unity needs a function called GetSaveData that returns a JSON string via Application.ExternalCall or SendMessage callback
+
+    // Wait for the JSON from Unity (simulate callback)
+    window.onUnitySaveData = function(jsonString) {
+      const saveString = btoa(jsonString); // Base64 encode
+      prompt("Copy this Save String (paste to load later):", saveString);
+    };
+  }
+
+  // Load Game State
+  function loadGame() {
+    const saveString = prompt("Paste your save string to load:");
+    if (!saveString) return;
+
+    try {
+      const jsonString = atob(saveString);
+      // Send JSON string to Unity
+      sendToUnity("GameManager", "LoadSaveData", jsonString);
+    } catch(e) {
+      alert("Invalid save string!");
+    }
+  }
+
+  // =========================
+  // Example: Capture Unity Save Callback
+  // =========================
+  // In Unity, call:
+  // Application.ExternalCall("onUnitySaveData", jsonString);
+</script>
+
+</body>
+</html>
